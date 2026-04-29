@@ -1,2 +1,2 @@
 # StarFish_agent_try
-尝试搭建一个简易的agent项目，主要目的是学习agent与agent_skill相关的内容已经尝试进行一次项目架构
+尝试搭建一个简易的agent项目，主要目的是学习agent与agent_skill相关的内容并尝试进行一次项目架构
