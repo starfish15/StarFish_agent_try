@@ -1,13 +1,21 @@
 from tools.weather import WeatherTool
+from tools.calculator import CalculatorTool
 
 class ToolManager:
-    def __init__(self):
+    def __init__(self, enabled_tools: list[str] | None = None):
         self.tools = {}
         self._register_builtin_tools()
+
+        if enabled_tools is not None:
+            enabled = {t.strip() for t in enabled_tools if t and t.strip()}
+            self.tools = {name: tool for name, tool in self.tools.items() if name in enabled}
 
     def _register_builtin_tools(self):
         weather = WeatherTool()
         self.tools[weather.name] = weather
+
+        calculator = CalculatorTool()
+        self.tools[calculator.name] = calculator
 
     def register(self, tool):
         """支持动态追加新工具"""

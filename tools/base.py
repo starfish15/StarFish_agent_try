@@ -1,14 +1,19 @@
 from abc import ABC, abstractmethod
 
 class BaseTool(ABC):
+    @property
     @abstractmethod
     def name(self) -> str:
-        pass
+        """Unique tool name used in tool calls."""
 
+    @property
     @abstractmethod
     def description(self) -> str:
-        pass
+        """Short description shown to the LLM."""
 
     @abstractmethod
     def run(self, **kwargs) -> dict:
-        pass
+        """Execute the tool.
+
+        Return a JSON-serializable dict.
+        """

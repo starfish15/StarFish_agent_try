@@ -1,25 +1,22 @@
 import json
 from agent.llm import LLMClient
 from agent.tool_manager import ToolManager
-from config.settings import MAX_ITERATIONS
-
-SYSTEM_PROMPT_TEMPLATE = """你是一个有用的天气助手。你可以使用以下工具：
-{tool_descriptions}
-
-规则：如果需要查天气，必须输出JSON格式：
-{{"tool": "工具名", "arguments": {{"city": "城市"}}}}
-如果已拿到结果，请用自然语言回复。"""
+from config.settings import ENABLED_SKILLS, ENABLED_TOOLS, MAX_ITERATIONS, SKILL_MODEL, SKILL_TEMPERATURE
+from skills.skill_manager import SkillManager
 
 class Agent:
     def __init__(self):
         self.llm = LLMClient()
-        self.tool_manager = ToolManager()
+        self.tool_manager = ToolManager(enabled_tools=ENABLED_TOOLS)
+        self.skill_manager = SkillManager(
+            enabled_skills=ENABLED_SKILLS,
+            temperature=SKILL_TEMPERATURE,
+            model=SKILL_MODEL,
+        )
         self.max_iter = MAX_ITERATIONS
 
     def _build_system_prompt(self):
-        return SYSTEM_PROMPT_TEMPLATE.format(
-            tool_descriptions=self.tool_manager.get_tools_prompt()
-        )
+        return self.skill_manager.build_system_prompt(self.tool_manager.get_tools_prompt())
 
     def run(self, user_message: str) -> str:
         messages = [
@@ -27,8 +24,10 @@ class Agent:
             {"role": "user", "content": user_message}
         ]
 
+        llm_options = self.skill_manager.merged_llm_options()
+
         for _ in range(self.max_iter):
-            reply = self.llm.chat(messages)
+            reply = self.llm.chat(messages, **llm_options)
             messages.append({"role": "assistant", "content": reply})
 
             # 尝试解析工具调用

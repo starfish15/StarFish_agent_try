@@ -1,0 +1,56 @@
+from __future__ import annotations
+
+from typing import Iterable
+
+from skills.base import BaseSkill
+from skills.cat_persona import CatPersonaSkill
+from skills.file_skill_loader import load_skills_from_dir
+from skills.json_tool_calling import JsonToolCallingSkill
+from skills.llm_tuning import LlmTuningSkill
+from config.settings import LOAD_FILE_SKILLS, SKILL_DEFINITIONS_DIR
+
+
+class SkillManager:
+    def __init__(
+        self,
+        enabled_skills: Iterable[str] | None = None,
+        *,
+        temperature: float | None = None,
+        model: str | None = None,
+    ):
+        self.skills: dict[str, BaseSkill] = {}
+        self._register_builtin_skills(temperature=temperature, model=model)
+
+        if LOAD_FILE_SKILLS:
+            for loaded in load_skills_from_dir(SKILL_DEFINITIONS_DIR):
+                self.register(loaded.skill)
+
+        if enabled_skills is not None:
+            enabled = {s.strip() for s in enabled_skills if s and s.strip()}
+            self.skills = {name: skill for name, skill in self.skills.items() if name in enabled}
+
+    def _register_builtin_skills(self, *, temperature: float | None, model: str | None):
+        # Ordering matters: prefix first, tool list in the middle, suffix last.
+        self.register(CatPersonaSkill())
+        self.register(LlmTuningSkill(temperature=temperature, model=model))
+        self.register(JsonToolCallingSkill())
+
+    def register(self, skill: BaseSkill) -> None:
+        self.skills[skill.name] = skill
+
+    def build_system_prompt(self, tool_descriptions: str) -> str:
+        prefixes = [s.system_prompt_prefix().strip() for s in self.skills.values() if s.system_prompt_prefix().strip()]
+        suffixes = [s.system_prompt_suffix().strip() for s in self.skills.values() if s.system_prompt_suffix().strip()]
+
+        parts: list[str] = []
+        parts.extend(prefixes)
+        if tool_descriptions.strip():
+            parts.append("你可以使用以下工具：\n" + tool_descriptions.strip())
+        parts.extend(suffixes)
+        return "\n\n".join(parts).strip()
+
+    def merged_llm_options(self) -> dict:
+        merged: dict = {}
+        for skill in self.skills.values():
+            merged.update(skill.llm_options() or {})
+        return merged
