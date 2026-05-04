@@ -3,11 +3,9 @@ from __future__ import annotations
 from typing import Iterable
 
 from skills.base import BaseSkill
-from skills.cat_persona import CatPersonaSkill
 from skills.file_skill_loader import load_skills_from_dir
 from skills.json_tool_calling import JsonToolCallingSkill
 from skills.llm_tuning import LlmTuningSkill
-from skills.developer_mode import DeveloperModeSkill
 from config.settings import LOAD_FILE_SKILLS, SKILL_DEFINITIONS_DIR
 
 
@@ -32,8 +30,7 @@ class SkillManager:
 
     def _register_builtin_skills(self, *, temperature: float | None, model: str | None):
         # Ordering matters: prefix first, tool list in the middle, suffix last.
-        self.register(CatPersonaSkill())
-        self.register(DeveloperModeSkill())
+
         self.register(LlmTuningSkill(temperature=temperature, model=model))
         self.register(JsonToolCallingSkill())
 
