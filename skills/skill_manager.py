@@ -7,6 +7,7 @@ from skills.cat_persona import CatPersonaSkill
 from skills.file_skill_loader import load_skills_from_dir
 from skills.json_tool_calling import JsonToolCallingSkill
 from skills.llm_tuning import LlmTuningSkill
+from skills.developer_mode import DeveloperModeSkill
 from config.settings import LOAD_FILE_SKILLS, SKILL_DEFINITIONS_DIR
 
 
@@ -32,15 +33,24 @@ class SkillManager:
     def _register_builtin_skills(self, *, temperature: float | None, model: str | None):
         # Ordering matters: prefix first, tool list in the middle, suffix last.
         self.register(CatPersonaSkill())
+        self.register(DeveloperModeSkill())
         self.register(LlmTuningSkill(temperature=temperature, model=model))
         self.register(JsonToolCallingSkill())
 
     def register(self, skill: BaseSkill) -> None:
         self.skills[skill.name] = skill
 
-    def build_system_prompt(self, tool_descriptions: str) -> str:
-        prefixes = [s.system_prompt_prefix().strip() for s in self.skills.values() if s.system_prompt_prefix().strip()]
-        suffixes = [s.system_prompt_suffix().strip() for s in self.skills.values() if s.system_prompt_suffix().strip()]
+    def get_skill_descriptions(self) -> str:
+        """Get a formatted string of all skill names and descriptions."""
+        return "\n".join(f"- {skill.name}: {skill.description}" for skill in self.skills.values())
+
+    def get_skills_by_names(self, names: list[str]) -> list[BaseSkill]:
+        """Return a list of skills that match the given names."""
+        return [self.skills[name] for name in names if name in self.skills]
+
+    def build_system_prompt(self, tool_descriptions: str, active_skills: list[BaseSkill]) -> str:
+        prefixes = [s.system_prompt_prefix().strip() for s in active_skills if s.system_prompt_prefix().strip()]
+        suffixes = [s.system_prompt_suffix().strip() for s in active_skills if s.system_prompt_suffix().strip()]
 
         parts: list[str] = []
         parts.extend(prefixes)
@@ -49,8 +59,8 @@ class SkillManager:
         parts.extend(suffixes)
         return "\n\n".join(parts).strip()
 
-    def merged_llm_options(self) -> dict:
+    def merged_llm_options(self, active_skills: list[BaseSkill]) -> dict:
         merged: dict = {}
-        for skill in self.skills.values():
+        for skill in active_skills:
             merged.update(skill.llm_options() or {})
         return merged

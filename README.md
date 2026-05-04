@@ -80,20 +80,27 @@ LOAD_FILE_SKILLS=1
 SKILL_DEFINITIONS_DIR=skills/definitions
 ```
 
-2) 在 `skills/definitions/` 下创建 `*.skill.md`，支持 YAML frontmatter：
+2) 在 `skills/definitions/` 下创建 `*.skill.md`，用章节（`##`）来写规则（更像 Claude Code 的体验）：
 
 ```md
----
-name: my_skill
-description: 一句话描述
-llm:
-	temperature: 0.2
-	# model: deepseek-v4-flash
-prompt_prefix: |
-	这里是要拼进 system prompt 前半段的内容
-prompt_suffix: |
-	这里是要拼进 system prompt 后半段的内容
----
+## Name
+my_skill
+
+## Description
+一句话描述
+
+## LLM
+temperature: 0.2
+# model: deepseek-v4-flash
+
+## Rules
+这里写你的规则/风格/策略，支持按更多章节拆分：
+
+## Style
+回答更简洁，必要时用要点列表。
+
+## Prompt Suffix
+这里的内容会拼到 tools 列表之后。
 ```
 
 仓库里有一个可直接参考的示例文件：`skills/definitions/example_tuning.skill.md`。
