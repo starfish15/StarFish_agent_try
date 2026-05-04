@@ -15,6 +15,8 @@ class FileSkill(BaseSkill):
         prompt_suffix: str = "",
         llm: dict[str, Any] | None = None,
         source: str | None = None,
+        always_on: bool = False,
+        uses_tools: bool = False,
     ):
         self._name = name
         self._description = description
@@ -22,6 +24,8 @@ class FileSkill(BaseSkill):
         self._prompt_suffix = prompt_suffix
         self._llm = llm or {}
         self._source = source
+        self._always_on = always_on
+        self._uses_tools = uses_tools
 
     @property
     def name(self) -> str:
@@ -29,9 +33,15 @@ class FileSkill(BaseSkill):
 
     @property
     def description(self) -> str:
-        if self._description:
-            return self._description
-        return f"File skill ({self._source or 'unknown'})"
+        return self._description
+
+    @property
+    def always_on(self) -> bool:
+        return self._always_on
+
+    @property
+    def uses_tools(self) -> bool:
+        return self._uses_tools
 
     def system_prompt_prefix(self) -> str:
         return self._prompt_prefix

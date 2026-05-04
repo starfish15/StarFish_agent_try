@@ -39,6 +39,9 @@ def _load_one(path: Path) -> FileSkill:
 
         description = str(meta.get("description") or "").strip()
 
+        uses_tools = bool(meta.get("uses_tools", False))
+        always_on = bool(meta.get("always_on", False))
+
         prompt_prefix = meta.get("prompt_prefix")
         prompt_suffix = meta.get("prompt_suffix")
 
@@ -62,6 +65,8 @@ def _load_one(path: Path) -> FileSkill:
             raise ValueError(f"Skill 文件缺少 name: {path}")
 
         description = (parsed.get("description") or "").strip()
+        uses_tools = bool(parsed.get("uses_tools", False))
+        always_on = bool(parsed.get("always_on", False))
         prompt_prefix = (parsed.get("prompt_prefix") or "").strip()
         prompt_suffix = (parsed.get("prompt_suffix") or "").strip()
 
@@ -76,6 +81,8 @@ def _load_one(path: Path) -> FileSkill:
         prompt_suffix=prompt_suffix,
         llm=llm,
         source=path.name,
+        uses_tools=uses_tools,
+        always_on=always_on,
     )
 
 
@@ -113,6 +120,8 @@ def _parse_chaptered_markdown(body: str) -> dict[str, Any]:
     name = ""
     description = ""
     llm: dict[str, Any] = {}
+    uses_tools = False
+    always_on = False
     suffix_chunks: list[str] = []
     prefix_chunks: list[str] = []
 
@@ -137,6 +146,28 @@ def _parse_chaptered_markdown(body: str) -> dict[str, Any]:
                 llm = parsed
             continue
 
+        if h in {"tools", "tool", "uses tools", "use tools"}:
+            if c:
+                parsed = yaml.safe_load(c) or {}
+                if isinstance(parsed, dict):
+                    uses_tools = bool(parsed.get("enabled", parsed.get("uses_tools", False)))
+                else:
+                    uses_tools = bool(str(c).strip().lower() in {"1", "true", "yes", "on"})
+            else:
+                uses_tools = True
+            continue
+
+        if h in {"always on", "always_on", "auto"}:
+            if c:
+                parsed = yaml.safe_load(c) or {}
+                if isinstance(parsed, dict):
+                    always_on = bool(parsed.get("enabled", parsed.get("always_on", False)))
+                else:
+                    always_on = bool(str(c).strip().lower() in {"1", "true", "yes", "on"})
+            else:
+                always_on = True
+            continue
+
         if h in {"prompt suffix", "suffix", "post", "after tools"}:
             if c:
                 suffix_chunks.append(_render_section(heading, c, keep_heading=False))
@@ -157,6 +188,8 @@ def _parse_chaptered_markdown(body: str) -> dict[str, Any]:
         "name": name,
         "description": description,
         "llm": llm,
+        "uses_tools": uses_tools,
+        "always_on": always_on,
         "prompt_prefix": prefix,
         "prompt_suffix": suffix,
     }

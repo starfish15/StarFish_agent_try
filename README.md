@@ -6,11 +6,9 @@
 ## 使用说明
 该项目运用uv进行管理，在克隆仓库后请在项目根目录使用`uv sync`下载相关依赖。
 
-如果你想与该智能体对话，请按照
-`StarFish_agent_try\config\.env.example`
-的格式在`config`文件夹下创建对应的`.env`配置文件
+如果你想与该智能体对话，请在项目根目录准备好 API Key（可写在 `.env` 或系统环境变量）。
 
-创建好配置文件后，你可以在项目根目录使用`uv run main.py`来运行智能体
+创建好配置后，你可以在项目根目录使用`uv run main.py`来运行智能体
 
 ---
 
@@ -69,6 +67,8 @@ Skill 的职责是“调优模型”，它通过向 `system_prompt` 注入指令
     ---
     name: your_skill_name
     description: "对这个 Skill 的简短描述，这段描述会展示给 LLM，让它判断是否需要激活此 Skill。"
+    # uses_tools: true  # 可选：需要工具列表与工具调用规则时开启
+    # always_on: true   # 可选：常驻启用，跳过 LLM 选择
     ---
     这里写下当 Skill 被激活时，需要注入到 system_prompt 的具体指令。
     你可以详细地描述模型的角色、语气、思考过程、输出格式等。
@@ -91,6 +91,10 @@ Skill 的职责是“调优模型”，它通过向 `system_prompt` 注入指令
 
 这个设计使得 Agent 更加灵活和智能。你只需要专注于编写功能明确、描述清晰的 Skill，而无需编写复杂的激活逻辑。
 
+### Tool 调用由 Skill 决定（uses_tools）
+只有当被激活的 Skill 设置了 `uses_tools: true` 时，系统提示词才会注入工具清单并允许工具调用。
+如果没有任何 Skill 启用 `uses_tools`，模型将不会看到工具列表，也不会被引导调用工具。
+
 ### 环境变量
 你可以通过环境变量来控制 Agent 的行为：
 
@@ -106,7 +110,7 @@ Skill 的职责是“调优模型”，它通过向 `system_prompt` 注入指令
 
 ```bash
 ENABLED_TOOLS=get_weather
-ENABLED_SKILLS=developer_mode,llm_tuning,json_tool_calling
+ENABLED_SKILLS=developer_mode,llm_tuning,tool_policy
 SKILL_TEMPERATURE=0.0
 ```
 

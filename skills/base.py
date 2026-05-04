@@ -20,9 +20,18 @@ class BaseSkill(ABC):
         """Unique skill name used for enabling/disabling."""
 
     @property
-    @abstractmethod
     def description(self) -> str:
         """Short description for humans."""
+
+    @property
+    def always_on(self) -> bool:
+        """If True, this skill is always active and not selected by LLM."""
+        return False
+
+    @property
+    def uses_tools(self) -> bool:
+        """If True, include tool list and tool rules for this skill."""
+        return False
 
     def system_prompt_prefix(self) -> str:
         """Content placed before the tool list in the system prompt."""

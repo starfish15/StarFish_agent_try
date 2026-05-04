@@ -8,7 +8,11 @@ class JsonToolCallingSkill(BaseSkill):
 
     @property
     def description(self) -> str:
-        return "要求需要用工具时只输出一段 JSON（tool/arguments 协议）"
+        return "启用工具调用：按需调用工具并输出 JSON（tool/arguments 协议）"
+
+    @property
+    def uses_tools(self) -> bool:
+        return True
 
     def system_prompt_suffix(self) -> str:
         return (

@@ -18,6 +18,7 @@ class SkillManager:
         model: str | None = None,
     ):
         self.skills: dict[str, BaseSkill] = {}
+        self.always_on_skills: list[BaseSkill] = []
         self._register_builtin_skills(temperature=temperature, model=model)
 
         if LOAD_FILE_SKILLS:
@@ -35,7 +36,10 @@ class SkillManager:
         self.register(JsonToolCallingSkill())
 
     def register(self, skill: BaseSkill) -> None:
-        self.skills[skill.name] = skill
+        if skill.always_on:
+            self.always_on_skills.append(skill)
+        else:
+            self.skills[skill.name] = skill
 
     def get_skill_descriptions(self) -> str:
         """Get a formatted string of all skill names and descriptions."""
@@ -45,13 +49,18 @@ class SkillManager:
         """Return a list of skills that match the given names."""
         return [self.skills[name] for name in names if name in self.skills]
 
+    def get_always_on_skills(self) -> list[BaseSkill]:
+        """Return the list of skills that are always active."""
+        return self.always_on_skills
+
     def build_system_prompt(self, tool_descriptions: str, active_skills: list[BaseSkill]) -> str:
         prefixes = [s.system_prompt_prefix().strip() for s in active_skills if s.system_prompt_prefix().strip()]
         suffixes = [s.system_prompt_suffix().strip() for s in active_skills if s.system_prompt_suffix().strip()]
+        wants_tools = any(getattr(s, "uses_tools", False) for s in active_skills)
 
         parts: list[str] = []
         parts.extend(prefixes)
-        if tool_descriptions.strip():
+        if wants_tools and tool_descriptions.strip():
             parts.append("你可以使用以下工具：\n" + tool_descriptions.strip())
         parts.extend(suffixes)
         return "\n\n".join(parts).strip()

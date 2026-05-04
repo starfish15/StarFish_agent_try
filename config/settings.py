@@ -32,7 +32,7 @@ ENABLED_SKILLS = _parse_csv_env("ENABLED_SKILLS")
 
 # 文件式 skills（类似用 Markdown 维护一份“技能提示词”）
 SKILL_DEFINITIONS_DIR = os.getenv("SKILL_DEFINITIONS_DIR", "skills/definitions")
-LOAD_FILE_SKILLS = (os.getenv("LOAD_FILE_SKILLS", "0").strip().lower() in {"1", "true", "yes"})
+LOAD_FILE_SKILLS = (os.getenv("LOAD_FILE_SKILLS", "1").strip().lower() in {"1", "true", "yes"})
 
 
 # Skill 驱动的模型调优（可选）

@@ -2,6 +2,7 @@ import json
 from agent.llm import LLMClient
 from agent.tool_manager import ToolManager
 from config.settings import ENABLED_SKILLS, ENABLED_TOOLS, MAX_ITERATIONS, SKILL_MODEL, SKILL_TEMPERATURE
+from skills.base import BaseSkill
 from skills.skill_manager import SkillManager
 
 class Agent:
@@ -19,16 +20,12 @@ class Agent:
         """Let the LLM choose which skills to activate."""
         skill_descriptions = self.skill_manager.get_skill_descriptions()
         prompt = (
-            "根据用户的输入，判断需要启用哪些技能。你的回答必须是一个JSON数组，其中只包含技能的名称。
-"
-            "可用的技能如下：
-"
-            f"{skill_descriptions}
-
-"
-            "如果不需要启用任何技能，请返回一个空数组[]。
-"
-            "用户的输入是: "
+            """根据用户的输入，判断需要启用哪些技能。你的回答必须是一个JSON数组，其中只包含技能的名称。
+可用的技能如下：
+"""
+            f"{skill_descriptions}"
+            """如果不需要启用任何技能，请返回一个空数组[]。
+用户的输入是: """
             f'"{user_message}"'
         )
 
@@ -50,7 +47,9 @@ class Agent:
 
     def run(self, user_message: str) -> str:
         # 1. Select skills
-        active_skills = self._select_skills(user_message)
+        llm_selected_skills = self._select_skills(user_message)
+        always_on_skills = self.skill_manager.get_always_on_skills()
+        active_skills = list(set(llm_selected_skills + always_on_skills))
 
         # 2. Build system prompt with selected skills
         tool_prompt = self.tool_manager.get_tools_prompt()
