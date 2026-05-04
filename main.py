@@ -7,7 +7,7 @@ def main():
     while True:
         user_input = input("\n你：").strip()
         if user_input.lower() in ["退出", "quit", "exit"]:
-            print("主人再见喵！")
+            print("\n主人再见喵！")
             break
         response = agent.run(user_input)
         print(f"\nAgent：{response}")
