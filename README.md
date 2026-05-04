@@ -1,117 +1,141 @@
 # StarFish_agent_try
-尝试搭建一个简易的agent项目，主要目的是学习agent与agent_skill相关的内容并尝试进行一次项目架构
+一个用于学习 Agent 与技能（skill）体系的最小化项目。重点是：
+- tools/ 负责“对外动作”
+- skills/ 负责“模型调优与提示词”
+- Agent 负责将两者拼装成可运行的对话流程
 
 ---
 
-## 使用说明
-该项目运用uv进行管理，在克隆仓库后请在项目根目录使用`uv sync`下载相关依赖。
-
-如果你想与该智能体对话，请在项目根目录准备好 API Key（可写在 `.env` 或系统环境变量）。
-
-创建好配置后，你可以在项目根目录使用`uv run main.py`来运行智能体
+## 项目结构
+```
+main.py
+agent/
+    core.py         # Agent 入口与对话主流程
+    llm.py          # LLM 客户端封装
+    tool_manager.py # Tool 管理与执行
+config/
+    settings.py     # 环境变量与运行配置
+skills/
+    base.py
+    file_skill.py
+    file_skill_loader.py
+    json_tool_calling.py
+    llm_tuning.py
+    skill_manager.py
+    definitions/    # 可直接编辑的 .skill.md 文件
+tools/
+    base.py
+    calculator.py
+    weather.py
+```
 
 ---
 
-## 如何添加 Tool（可被模型调用的工具）
-Tool 的职责是“对外动作”（HTTP 请求、查询、计算、读写等）。模型通过输出 JSON 触发 tool 执行（协议由 skill 约束），执行结果会以“工具执行结果：{...}”喂回模型继续回答。
+## 快速开始
+1) 安装依赖：
+```bash
+uv sync
+```
 
-新增一个 Tool 的最小步骤：
+2) 配置 API Key（.env 或环境变量）：
+```bash
+DEEPSEEK_API_KEY=your_key
+```
 
-1) 在 `tools/` 新建一个工具类，继承 `BaseTool`，实现：
-- `name`: 工具唯一名字（字符串），模型会在 JSON 里用它
-- `description`: 给模型看的简短说明（包含参数名更好）
-- `run(**kwargs) -> dict`: 执行逻辑，返回可 JSON 序列化的字典
+3) 启动：
+```bash
+uv run main.py
+```
 
-2) 在 `agent/tool_manager.py` 里注册：
-- 内置工具：在 `_register_builtin_tools()` 中实例化并放进 `self.tools`
-- 或者在运行时调用 `ToolManager.register(tool)` 动态追加
+---
 
-3) 运行并测试对话：
-当模型需要调用工具时，会“只输出 JSON”，形如：
+## Agent 工作流程（简版）
+1) 收到用户输入后，LLM 先根据技能描述选择需要启用的 skills
+2) SkillManager 将选中的 skills 拼成 system_prompt
+3) 如果启用了可用工具的 skill，提示词会注入工具列表
+4) LLM 可能输出工具调用 JSON，ToolManager 执行后回传结果
+5) LLM 继续回答用户
 
+---
+
+## Tools：对外动作
+Tool 用于执行外部动作（HTTP、查询、计算、读写等）。模型通过输出 JSON 触发执行，结果会以 `工具执行结果：{...}` 回传给模型。
+
+### 新增 Tool
+1) 在 `tools/` 新建类，继承 `BaseTool`：
+- `name`：工具唯一名字
+- `description`：给模型看的说明（写清参数）
+- `run(**kwargs) -> dict`：执行逻辑，返回可 JSON 序列化的字典
+
+2) 注册工具：
+- 内置工具：在 `agent/tool_manager.py` 的 `_register_builtin_tools()` 中实例化并加入 `self.tools`
+- 动态注册：运行时调用 `ToolManager.register(tool)`
+
+### 工具调用协议
 ```json
 {"tool": "get_weather", "arguments": {"city": "shanghai"}}
 ```
 
-项目会执行对应工具，并把结果作为下一轮输入喂回 LLM：
-`工具执行结果：{...}`
-
-### 示例：内置的 calculate 工具
-本仓库已经提供了一个示例工具：`tools/calculator.py`（工具名 `calculate`），参数为 `expression`。
-
-你可以这样问：
-- 你：帮我算 (1 + 2) * 3
-- Agent（可能会先输出工具调用 JSON）：
-	`{"tool": "calculate", "arguments": {"expression": "(1 + 2) * 3"}}`
-- Agent（拿到工具结果后）：返回计算结果
+### 示例：calculate
+内置示例工具位于 `tools/calculator.py`，工具名 `calculate`，参数 `expression`。
 
 ---
 
-## 分开管理 tools 与 skills（推荐）
-为了让 “工具（tools）” 和 “模型调优（skills）” 分开管理：
+## Skills：模型调优
+Skill 只负责“调优模型”（system prompt 片段 + LLM 参数），不做任何外部副作用。
 
-- `tools/`：对外动作（HTTP 请求、查询、计算、读写等），会被模型通过 JSON 触发执行
-- `skills/`：只做模型调优（system prompt 片段、输出风格约束、LLM 参数如 temperature/model），不做任何外部副作用
+### 内置 Skills
+- `json_tool_calling`：允许工具调用并给出 JSON 规则
+- `llm_tuning`：通过环境变量覆盖 `temperature` / `model`
 
-### 如何添加 Skill（主要用于调优模型）
-Skill 的职责是“调优模型”，它通过向 `system_prompt` 注入指令来改变模型的行为，例如调整语气、设定角色、规定输出格式等。
+### File Skill（推荐）
+默认会从 `skills/definitions/` 加载 `.skill.md` 文件（可通过环境变量关闭）。
+当前项目内的技能采用 Frontmatter + 纯正文的格式（可参考现有的 `.skill.md` 文件）。
 
-当前项目架构下，**推荐通过创建 Markdown 文件来添加新的 Skill**。
+#### 创建一个新的 Skill
+在 `skills/definitions/` 新建 `xxx.skill.md`，格式如下：
+```markdown
+---
+name: your_skill_name
+description: "对这个 Skill 的简短描述"
+# uses_tools: true   # 可选：需要工具列表时开启
+# always_on: true    # 可选：常驻启用，跳过 LLM 选择
+---
+这里写注入到 system_prompt 的内容。
+```
 
-**新增一个 Skill 的步骤：**
+说明：
+- `uses_tools` 为 `true` 时会注入工具列表与调用规则
+- `always_on` 为 `true` 时会跳过技能选择阶段
 
-1.  在 `skills/definitions/` 目录下创建一个新的 `.skill.md` 文件。
-2.  在文件中使用以下格式编写 Skill：
+### Skill 选择机制
+LLM 会根据 `name` + `description` 返回技能列表，Agent 只激活这些技能（`always_on: true` 会跳过选择阶段）。
 
-    ```markdown
-    ---
-    name: your_skill_name
-    description: "对这个 Skill 的简短描述，这段描述会展示给 LLM，让它判断是否需要激活此 Skill。"
-    # uses_tools: true  # 可选：需要工具列表与工具调用规则时开启
-    # always_on: true   # 可选：常驻启用，跳过 LLM 选择
-    ---
-    这里写下当 Skill 被激活时，需要注入到 system_prompt 的具体指令。
-    你可以详细地描述模型的角色、语气、思考过程、输出格式等。
-    ```
+### Tool 调用由 Skill 决定
+只有启用了 `uses_tools` 的 skill 才会注入工具列表与调用规则。
 
-3.  **（可选）在 `.env` 文件中启用 `LOAD_FILE_SKILLS`** (默认已在 `config/settings.py` 中开启):
-    ```bash
-    LOAD_FILE_SKILLS=1
-    SKILL_DEFINITIONS_DIR=skills/definitions
-    ```
+---
 
-完成以上步骤后，Agent 将在启动时自动加载你的新 Skill。
+## 环境变量
+基础配置：
+- `DEEPSEEK_API_KEY`：LLM API Key（必填）
+- `LLM_BASE_URL`：API Base URL，默认 `https://api.deepseek.com`
+- `LLM_MODEL`：默认模型名，默认 `deepseek-chat`
+- `MAX_ITERATIONS`：一次对话最多工具循环次数，默认 5
 
-### Skill 的工作原理：由 LLM 动态选择
+技能与工具控制：
+- `ENABLED_TOOLS`：逗号分隔，仅启用指定工具
+- `ENABLED_SKILLS`：逗号分隔，仅启用指定技能
+- `LOAD_FILE_SKILLS`：是否加载 `skills/definitions/`（默认开启）
+- `SKILL_DEFINITIONS_DIR`：技能文件目录（默认 `skills/definitions`）
 
-本 Agent 的一个核心特性是**由 LLM 自主决定在对话中激活哪些 Skill**。工作流程如下：
-
-1.  **技能选择阶段**: 当收到用户输入后，Agent 会首先将所有已加载 Skill 的 `name` 和 `description` 整合起来，向 LLM 发起一次“元调用”（meta-call）。这个调用的目的是询问 LLM：“根据用户的这句话，你认为应该激活以下哪些技能？”
-2.  **执行阶段**: LLM 会返回一个它认为需要激活的 Skill 名称列表（例如 `["cat_persona", "developer_mode"]`）。Agent 随后只加载这些被选中的 Skill，并使用它们的指令来构建最终的 `system_prompt`，然后与用户进行正式的对话。
-
-这个设计使得 Agent 更加灵活和智能。你只需要专注于编写功能明确、描述清晰的 Skill，而无需编写复杂的激活逻辑。
-
-### Tool 调用由 Skill 决定（uses_tools）
-只有当被激活的 Skill 设置了 `uses_tools: true` 时，系统提示词才会注入工具清单并允许工具调用。
-如果没有任何 Skill 启用 `uses_tools`，模型将不会看到工具列表，也不会被引导调用工具。
-
-### 环境变量
-你可以通过环境变量来控制 Agent 的行为：
-
-- `ENABLED_TOOLS`：逗号分隔，只暴露指定工具给 agent（不设置则默认全部内置工具启用）。
-- `ENABLED_SKILLS`：逗号分隔，只加载指定的 skill（不设置则默认全部 skill 都可被 LLM 选择）。
-
-以及用内置的 `llm_tuning` skill 来调优模型参数（可选）：
-
+模型调优（配合 `llm_tuning`）：
 - `SKILL_TEMPERATURE`：覆盖温度
 - `SKILL_MODEL`：覆盖模型名（会覆盖 `LLM_MODEL`）
 
-示例：只保留天气工具 + 只让 `developer_mode` 可选
-
+示例：只保留天气工具 + 只允许指定技能
 ```bash
 ENABLED_TOOLS=get_weather
-ENABLED_SKILLS=developer_mode,llm_tuning,tool_policy
+ENABLED_SKILLS=llm_tuning,json_tool_calling,cat_persona
 SKILL_TEMPERATURE=0.0
 ```
-
-（后续会做UI界面的吧）
