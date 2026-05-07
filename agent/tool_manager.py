@@ -1,5 +1,7 @@
 from tools.weather import WeatherTool
 from tools.calculator import CalculatorTool
+from tools.critical_path import CriticalPathTool
+from tools.parse_schedule import ParseScheduleTool
 
 class ToolManager:
     def __init__(self, enabled_tools: list[str] | None = None):
@@ -16,6 +18,12 @@ class ToolManager:
 
         calculator = CalculatorTool()
         self.tools[calculator.name] = calculator
+
+        critical_path = CriticalPathTool()
+        self.tools[critical_path.name] = critical_path
+
+        parse_schedule = ParseScheduleTool()
+        self.tools[parse_schedule.name] = parse_schedule
 
     def register(self, tool):
         """支持动态追加新工具"""
