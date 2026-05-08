@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Chat</title>
+  <link rel="stylesheet" href="chat_ui.css" />
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">User ↔ Agent</p>
+      <h1>星辰猫猫的小窝</h1>
+      <p id="uiTitle" class="ui-title"></p>
+      <p class="subtitle">包含本次对话记录、输入框、发送与退出按钮。</p>
+    </header>
+
+    <section class="panel chat-panel" aria-label="本次对话记录">
+      <div id="chatLog" class="chat-log"></div>
+    </section>
+
+    <section class="panel input-panel" aria-label="输入区">
+      <label class="label" for="userInput">你的输入</label>
+      <textarea id="userInput" rows="3" placeholder="在这里输入，然后点击“发送”或按 Enter 键…"></textarea>
+      <div class="controls">
+        <button id="sendBtn" class="btn">发送</button>
+        <button id="quitBtn" class="btn btn-secondary">退出</button>
+      </div>
+      <p id="status" class="status"></p>
+    </section>
+  </main>
+
+  <script src="chat_ui.js"></script>
+</body>
+</html>

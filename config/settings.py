@@ -1,7 +1,21 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()  # 自动读取项目根目录的 .env 文件
+# 项目根目录（避免从 test/ 等子目录启动时，相对路径失效）
+ROOT_DIR = Path(__file__).resolve().parents[1]
+
+# 固定从项目内的 .env 读取（而不是依赖当前工作目录 CWD）
+# 优先：config/.env（推荐把密钥放这里）
+# 回退：项目根目录 .env（兼容旧用法）
+_dotenv_candidates = [
+	ROOT_DIR / "config" / ".env",
+	ROOT_DIR / ".env",
+]
+for _path in _dotenv_candidates:
+	if _path.exists():
+		load_dotenv(dotenv_path=_path)
+		break
 
 # LLM 配置
 LLM_API_KEY = os.getenv("DEEPSEEK_API_KEY")
@@ -31,7 +45,14 @@ ENABLED_SKILLS = _parse_csv_env("ENABLED_SKILLS")
 
 
 # 文件式 skills（类似用 Markdown 维护一份“技能提示词”）
-SKILL_DEFINITIONS_DIR = os.getenv("SKILL_DEFINITIONS_DIR", "skills/definitions")
+_skill_dir = os.getenv("SKILL_DEFINITIONS_DIR")
+if _skill_dir and _skill_dir.strip():
+	_skill_path = Path(_skill_dir.strip())
+	if not _skill_path.is_absolute():
+		_skill_path = ROOT_DIR / _skill_path
+	SKILL_DEFINITIONS_DIR = str(_skill_path)
+else:
+	SKILL_DEFINITIONS_DIR = str(ROOT_DIR / "skills" / "definitions")
 LOAD_FILE_SKILLS = (os.getenv("LOAD_FILE_SKILLS", "1").strip().lower() in {"1", "true", "yes"})
 
 

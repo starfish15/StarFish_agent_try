@@ -37,7 +37,7 @@ tools/
 uv sync
 ```
 
-2) 配置 API Key（.env 或环境变量）：
+2) 配置 API Key（config/.env 或环境变量）：
 ```bash
 DEEPSEEK_API_KEY=your_key
 ```
@@ -45,6 +45,41 @@ DEEPSEEK_API_KEY=your_key
 3) 启动：
 ```bash
 uv run main.py
+```
+
+### Web 对话窗口（可选）
+项目内提供了一个最小化的 Web 交互窗口（包含对话记录、输入框、发送、退出）。
+
+1) 启动 server：
+```bash
+uv run ui/chat_server.py
+```
+
+2) 浏览器打开：
+```text
+http://localhost:8002/
+```
+
+### FastAPI + Tkinter 桌面窗口（可选）(这个后续优化的优先级较低)
+如果你更倾向于“桌面 GUI”，项目也提供了 Tkinter 版窗口（对话记录 / 输入框 / 发送 / 退出），其后端使用 FastAPI。
+
+说明：Tkinter 需要图形环境。
+- Linux 远程/无桌面环境下若没有 `DISPLAY`，会报 `no display name and no $DISPLAY environment variable`。
+- 另外一些精简 Linux 环境默认不包含 Tk：需要安装 `python3-tk`（Debian/Ubuntu）或 `python3-tkinter`（Fedora）。
+
+1) 直接启动桌面窗口（默认会自动拉起 FastAPI 后端）：
+```bash
+uv run ui/chat_tk.py
+```
+
+2) 或者你也可以先单独启动 FastAPI 后端：
+```bash
+uv run ui/chat_fastapi_server.py
+```
+
+然后再启动窗口并禁止自动拉起：
+```bash
+CHAT_START_SERVER=0 uv run ui/chat_tk.py
 ```
 
 ---
