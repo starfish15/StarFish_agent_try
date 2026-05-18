@@ -3,6 +3,7 @@ from agent.llm import LLMClient
 from agent.tool_manager import ToolManager
 from config.settings import (
     CONTEXT_KEEP_LAST,
+    DEBUG_CONTEXT_COMPRESSION,
     ENABLED_SKILLS,
     ENABLED_TOOLS,
     MAX_CONTEXT_CHARS,
@@ -106,6 +107,14 @@ class Agent:
         to_summarize = rest[:-CONTEXT_KEEP_LAST]
         keep = rest[-CONTEXT_KEEP_LAST:]
         self._summary = self._summarize_messages(to_summarize)
+
+        if DEBUG_CONTEXT_COMPRESSION:
+            print(
+                "Context compressed: "
+                f"summary_chars={len(self._summary)}, "
+                f"kept_messages={len(keep)}, "
+                f"total_messages={len(messages)}"
+            )
 
         summary_msg = {
             "role": "system",
