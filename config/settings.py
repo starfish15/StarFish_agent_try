@@ -25,6 +25,14 @@ LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
 # Agent 配置
 MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", 5))
 
+# Context 管理
+# 以字符数粗略控制上下文大小（不依赖 tokenizer）
+MAX_CONTEXT_CHARS = int(os.getenv("MAX_CONTEXT_CHARS", 12000))
+# 保留最近 N 条消息，其余进行压缩
+CONTEXT_KEEP_LAST = int(os.getenv("CONTEXT_KEEP_LAST", 6))
+# 压缩摘要的最大字符数
+SUMMARY_MAX_CHARS = int(os.getenv("SUMMARY_MAX_CHARS", 1200))
+
 
 def _parse_csv_env(name: str) -> list[str] | None:
 	"""Parse comma-separated env var; empty -> None."""
