@@ -26,7 +26,26 @@ def _guess_content_type(path: str) -> str:
     return "application/octet-stream"
 
 
+def _normalize_mode(raw: object) -> str:
+    if isinstance(raw, str) and raw.strip().lower() in {"think", "inner", "normal"}:
+        return raw.strip().lower()
+    return "normal"
+
+
+def _extract_final(reply: str) -> str:
+    upper = reply.upper()
+    start = upper.find("<FINAL>")
+    if start == -1:
+        return reply
+    start += len("<FINAL>")
+    end = upper.find("</FINAL>")
+    final = reply[start:end if end != -1 else len(reply)]
+    return final.strip()
+
+
 class ChatHandler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
     def do_OPTIONS(self):
         self.send_response(204)
         self._set_cors()
@@ -46,15 +65,15 @@ class ChatHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urlparse(self.path).path
 
-        if path == "/chat":
-            return self._handle_chat()
+        if path == "/chat_stream":
+            return self._handle_chat_stream()
 
         if path == "/shutdown":
             return self._handle_shutdown()
 
         self.send_error(404, "Not Found")
 
-    def _handle_chat(self):
+    def _handle_chat_stream(self):
         content_length = int(self.headers.get("Content-Length", 0))
         raw_body = self.rfile.read(content_length)
 
@@ -64,24 +83,39 @@ class ChatHandler(BaseHTTPRequestHandler):
             return self._send_json({"error": "Invalid JSON"}, status=400)
 
         text = payload.get("text", "")
+        mode = _normalize_mode(payload.get("mode"))
         if not isinstance(text, str) or not text.strip():
             return self._send_json({"error": "text is required"}, status=400)
 
         try:
-            reply = self.server.agent.run(text)
+            stream = self.server.agent.run_stream(text, response_mode=mode)
         except Exception as exc:  # keep server alive on LLM errors
             return self._send_json({"error": str(exc)}, status=500)
 
-        self.server.history.append({"role": "user", "content": text})
-        self.server.history.append({"role": "assistant", "content": reply})
+        self.send_response(200)
+        self._set_cors()
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Connection", "close")
+        self.end_headers()
 
-        return self._send_json(
-            {
-                "reply": reply,
-                "history": self.server.history,
-            },
-            status=200,
-        )
+        reply_parts = []
+        try:
+            for chunk in stream:
+                if not chunk:
+                    continue
+                reply_parts.append(chunk)
+                self.wfile.write(chunk.encode("utf-8"))
+                self.wfile.flush()
+        except Exception as exc:
+            err_text = f"\n[ERROR] {exc}"
+            self.wfile.write(err_text.encode("utf-8"))
+            self.wfile.flush()
+
+        reply = "".join(reply_parts)
+        final_reply = _extract_final(reply) if mode in {"think", "inner"} else reply
+        self.server.history.append({"role": "user", "content": text})
+        self.server.history.append({"role": "assistant", "content": final_reply})
+        self.close_connection = True
 
     def _handle_shutdown(self):
         self._send_json({"ok": True}, status=200)

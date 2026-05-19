@@ -12,7 +12,7 @@
       <p class="eyebrow">User ↔ Agent</p>
       <h1>星辰猫猫的小窝</h1>
       <p id="uiTitle" class="ui-title"></p>
-      <p class="subtitle">包含本次对话记录、输入框、发送与退出按钮。</p>
+      <p id="subtitle" class="subtitle"></p>
     </header>
 
     <section class="panel chat-panel" aria-label="本次对话记录">
@@ -20,6 +20,21 @@
     </section>
 
     <section class="panel input-panel" aria-label="输入区">
+
+      <div class="mode-row" role="group" aria-label="回复模式">
+        <span class="label mode-label">回复模式</span>
+        <div class="mode-buttons" role="group" aria-label="模式按钮">
+          <button type="button" class="btn btn-secondary mode-btn active" data-mode="normal" aria-pressed="true">
+            对话
+          </button>
+          <button type="button" class="btn btn-secondary mode-btn" data-mode="inner" aria-pressed="false">
+            思考
+          </button>
+          <button type="button" class="btn btn-secondary mode-btn" data-mode="think" aria-pressed="false">
+            调试
+          </button>
+        </div>
+      </div>
       <label class="label" for="userInput">你的输入</label>
       <textarea id="userInput" rows="3" placeholder="在这里输入，然后点击“发送”或按 Enter 键…"></textarea>
       <div class="controls">

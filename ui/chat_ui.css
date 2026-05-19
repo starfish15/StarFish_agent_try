@@ -127,6 +127,86 @@ h1 {
   resize: vertical;
 }
 
+.mode-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.mode-label {
+  margin-right: 6px;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mode-btn {
+  padding: 8px 16px;
+}
+
+.mode-btn.active {
+  background: var(--accent-strong);
+  color: #fff;
+  border-color: var(--accent-strong);
+}
+
+.mode-btn.active:hover {
+  background: var(--accent-strong);
+  color: #fff;
+  border-color: var(--accent-strong);
+  transform: none;
+}
+
+.mode-btn:not(.active):hover {
+  background: var(--bg);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.mode-title {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.thought-box {
+  border: 1px dashed var(--border);
+  background: #f9f3ea;
+  color: var(--muted);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.thought-title {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.thought-text {
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.final-box {
+  margin-top: 10px;
+}
+
+.final-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
 .label {
   font-weight: 600;
 }

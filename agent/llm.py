@@ -26,3 +26,18 @@ class LLMClient:
             **kwargs,
         )
         return response.choices[0].message.content
+
+    def chat_stream(self, messages, temperature: float = 0.0, model: str | None = None, **kwargs):
+        client = self._get_client()
+        stream = client.chat.completions.create(
+            model=model or self.model,
+            messages=messages,
+            temperature=temperature,
+            stream=True,
+            **kwargs,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta
+            content = getattr(delta, "content", None)
+            if content:
+                yield content
