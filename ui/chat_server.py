@@ -60,6 +60,9 @@ class ChatHandler(BaseHTTPRequestHandler):
         if path in {"/chat_ui.css", "/chat_ui.js"}:
             return self._send_file(os.path.join(UI_DIR, path.lstrip("/")))
 
+        if path == "/personas":
+            return self._handle_personas()
+
         self.send_error(404, "Not Found")
 
     def do_POST(self):
@@ -67,6 +70,9 @@ class ChatHandler(BaseHTTPRequestHandler):
 
         if path == "/chat_stream":
             return self._handle_chat_stream()
+
+        if path == "/select_persona":
+            return self._handle_select_persona()
 
         if path == "/shutdown":
             return self._handle_shutdown()
@@ -116,6 +122,35 @@ class ChatHandler(BaseHTTPRequestHandler):
         self.server.history.append({"role": "user", "content": text})
         self.server.history.append({"role": "assistant", "content": final_reply})
         self.close_connection = True
+
+    def _handle_personas(self):
+        data = {
+            "active": self.server.agent.get_selected_persona(),
+            "personas": self.server.agent.list_personas(),
+        }
+        return self._send_json(data, status=200)
+
+    def _handle_select_persona(self):
+        content_length = int(self.headers.get("Content-Length", 0))
+        raw_body = self.rfile.read(content_length)
+
+        try:
+            payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+        except json.JSONDecodeError:
+            return self._send_json({"error": "Invalid JSON"}, status=400)
+
+        name = payload.get("name", "")
+        if not isinstance(name, str) or not name.strip():
+            return self._send_json({"error": "name is required"}, status=400)
+
+        if not self.server.agent.set_persona(name):
+            return self._send_json({"error": "persona not found"}, status=404)
+
+        data = {
+            "active": self.server.agent.get_selected_persona(),
+            "personas": self.server.agent.list_personas(),
+        }
+        return self._send_json(data, status=200)
 
     def _handle_shutdown(self):
         self._send_json({"ok": True}, status=200)

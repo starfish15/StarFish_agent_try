@@ -10,6 +10,7 @@ class FileSkill(BaseSkill):
         self,
         *,
         name: str,
+        display_name: str | None = None,
         description: str = "",
         prompt_prefix: str = "",
         prompt_suffix: str = "",
@@ -17,8 +18,11 @@ class FileSkill(BaseSkill):
         source: str | None = None,
         always_on: bool = False,
         uses_tools: bool = False,
+        selectable: bool = True,
+        exclusive_group: str = "",
     ):
         self._name = name
+        self._display_name = display_name or name
         self._description = description
         self._prompt_prefix = prompt_prefix
         self._prompt_suffix = prompt_suffix
@@ -26,6 +30,8 @@ class FileSkill(BaseSkill):
         self._source = source
         self._always_on = always_on
         self._uses_tools = uses_tools
+        self._selectable = selectable
+        self._exclusive_group = exclusive_group
 
     @property
     def name(self) -> str:
@@ -42,6 +48,18 @@ class FileSkill(BaseSkill):
     @property
     def uses_tools(self) -> bool:
         return self._uses_tools
+
+    @property
+    def selectable(self) -> bool:
+        return self._selectable
+
+    @property
+    def exclusive_group(self) -> str:
+        return self._exclusive_group
+
+    @property
+    def display_name(self) -> str:
+        return self._display_name
 
     def system_prompt_prefix(self) -> str:
         return self._prompt_prefix

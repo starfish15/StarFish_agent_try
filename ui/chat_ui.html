@@ -34,6 +34,10 @@
             调试
           </button>
         </div>
+        <div class="mode-actions" role="group" aria-label="人设选择">
+          <button id="personaBtn" type="button" class="btn btn-secondary">选择人设</button>
+          <span id="personaActive" class="persona-active"></span>
+        </div>
       </div>
       <label class="label" for="userInput">你的输入</label>
       <textarea id="userInput" rows="3" placeholder="在这里输入，然后点击“发送”或按 Enter 键…"></textarea>
@@ -44,6 +48,21 @@
       <p id="status" class="status"></p>
     </section>
   </main>
+
+  <div id="personaModal" class="modal" aria-hidden="true" role="dialog" aria-label="人设选择">
+    <div class="modal-backdrop" data-close="true"></div>
+    <div class="modal-surface" role="document">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Persona</p>
+          <h2 class="modal-title">选择人设</h2>
+        </div>
+        <button type="button" class="btn btn-secondary modal-close" data-close="true">关闭</button>
+      </div>
+      <div id="personaList" class="persona-list"></div>
+      <p id="personaStatus" class="status"></p>
+    </div>
+  </div>
 
   <script src="chat_ui.js"></script>
 </body>

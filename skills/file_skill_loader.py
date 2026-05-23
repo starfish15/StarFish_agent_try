@@ -21,7 +21,9 @@ def load_skills_from_dir(definitions_dir: str | Path) -> list[LoadedSkill]:
         return []
 
     loaded: list[LoadedSkill] = []
-    for path in sorted(base.glob("*.skill.md")):
+    for path in sorted(base.rglob("*.skill.md")):
+        if not path.is_file():
+            continue
         loaded.append(LoadedSkill(skill=_load_one(path), path=path))
     return loaded
 
@@ -37,10 +39,18 @@ def _load_one(path: Path) -> FileSkill:
         if not name:
             raise ValueError(f"Skill 文件缺少 name: {path}")
 
+        display_name = str(meta.get("display_name") or meta.get("displayName") or "").strip()
         description = str(meta.get("description") or "").strip()
 
         uses_tools = bool(meta.get("uses_tools", False))
         always_on = bool(meta.get("always_on", False))
+        selectable = bool(meta.get("selectable", True))
+        exclusive_group = str(
+            meta.get("exclusive_group")
+            or meta.get("exclusiveGroup")
+            or meta.get("group")
+            or ""
+        ).strip()
 
         prompt_prefix = meta.get("prompt_prefix")
         prompt_suffix = meta.get("prompt_suffix")
@@ -64,9 +74,12 @@ def _load_one(path: Path) -> FileSkill:
         if not name:
             raise ValueError(f"Skill 文件缺少 name: {path}")
 
+        display_name = (parsed.get("display_name") or "").strip()
         description = (parsed.get("description") or "").strip()
         uses_tools = bool(parsed.get("uses_tools", False))
         always_on = bool(parsed.get("always_on", False))
+        selectable = bool(parsed.get("selectable", True))
+        exclusive_group = str(parsed.get("exclusive_group") or "").strip()
         prompt_prefix = (parsed.get("prompt_prefix") or "").strip()
         prompt_suffix = (parsed.get("prompt_suffix") or "").strip()
 
@@ -76,6 +89,7 @@ def _load_one(path: Path) -> FileSkill:
 
     return FileSkill(
         name=name,
+        display_name=display_name or name,
         description=description,
         prompt_prefix=prompt_prefix,
         prompt_suffix=prompt_suffix,
@@ -83,6 +97,8 @@ def _load_one(path: Path) -> FileSkill:
         source=path.name,
         uses_tools=uses_tools,
         always_on=always_on,
+        selectable=selectable,
+        exclusive_group=exclusive_group,
     )
 
 
@@ -119,9 +135,12 @@ def _parse_chaptered_markdown(body: str) -> dict[str, Any]:
 
     name = ""
     description = ""
+    display_name = ""
     llm: dict[str, Any] = {}
     uses_tools = False
     always_on = False
+    selectable = True
+    exclusive_group = ""
     suffix_chunks: list[str] = []
     prefix_chunks: list[str] = []
 
@@ -136,6 +155,11 @@ def _parse_chaptered_markdown(body: str) -> dict[str, Any]:
 
         if h in {"description", "desc"}:
             description = c
+            continue
+
+        if h in {"display name", "display_name", "title"}:
+            if c:
+                display_name = c.splitlines()[0].strip()
             continue
 
         if h in {"llm", "model", "tuning", "parameters"}:
@@ -157,6 +181,17 @@ def _parse_chaptered_markdown(body: str) -> dict[str, Any]:
                 uses_tools = True
             continue
 
+        if h in {"selectable", "llm selectable", "auto select"}:
+            if c:
+                parsed = yaml.safe_load(c) or {}
+                if isinstance(parsed, dict):
+                    selectable = bool(parsed.get("enabled", parsed.get("selectable", True)))
+                else:
+                    selectable = bool(str(c).strip().lower() in {"1", "true", "yes", "on"})
+            else:
+                selectable = True
+            continue
+
         if h in {"always on", "always_on", "auto"}:
             if c:
                 parsed = yaml.safe_load(c) or {}
@@ -166,6 +201,11 @@ def _parse_chaptered_markdown(body: str) -> dict[str, Any]:
                     always_on = bool(str(c).strip().lower() in {"1", "true", "yes", "on"})
             else:
                 always_on = True
+            continue
+
+        if h in {"exclusive group", "exclusive_group", "group"}:
+            if c:
+                exclusive_group = c.splitlines()[0].strip()
             continue
 
         if h in {"prompt suffix", "suffix", "post", "after tools"}:
@@ -187,9 +227,12 @@ def _parse_chaptered_markdown(body: str) -> dict[str, Any]:
     return {
         "name": name,
         "description": description,
+        "display_name": display_name,
         "llm": llm,
         "uses_tools": uses_tools,
         "always_on": always_on,
+        "selectable": selectable,
+        "exclusive_group": exclusive_group,
         "prompt_prefix": prefix,
         "prompt_suffix": suffix,
     }

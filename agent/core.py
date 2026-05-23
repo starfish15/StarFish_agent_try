@@ -25,9 +25,38 @@ class Agent:
             temperature=SKILL_TEMPERATURE,
             model=SKILL_MODEL,
         )
+        self._persona_group = "persona"
+        self._selected_persona = self._default_persona()
         self.max_iter = MAX_ITERATIONS
         self._summary = ""
         self._messages: list[dict] = []
+
+    def _default_persona(self) -> str | None:
+        personas = self.skill_manager.get_skills_by_group(self._persona_group)
+        return personas[0].name if personas else None
+
+    def list_personas(self) -> list[dict]:
+        personas = self.skill_manager.get_skills_by_group(self._persona_group)
+        return [
+            {
+                "name": persona.name,
+                "display_name": persona.display_name,
+                "description": persona.description,
+            }
+            for persona in personas
+        ]
+
+    def get_selected_persona(self) -> str | None:
+        return self._selected_persona
+
+    def set_persona(self, name: str) -> bool:
+        if not isinstance(name, str) or not name.strip():
+            return False
+        candidates = {p.name for p in self.skill_manager.get_skills_by_group(self._persona_group)}
+        if name not in candidates:
+            return False
+        self._selected_persona = name
+        return True
 
     def _ensure_system_prompt(self, system_prompt: str) -> None:
         if self._messages and self._messages[0].get("role") == "system":
@@ -38,6 +67,8 @@ class Agent:
     def _select_skills(self, user_message: str) -> list[BaseSkill]:
         """Let the LLM choose which skills to activate."""
         skill_descriptions = self.skill_manager.get_skill_descriptions()
+        if not skill_descriptions.strip():
+            return []
         prompt = (
             """根据用户的输入，判断需要启用哪些技能。你的回答必须是一个JSON数组，其中只包含技能的名称。
 可用的技能如下：
@@ -58,6 +89,19 @@ class Agent:
             print(f"技能选择失败: {e}")  # For debugging
             return []
         return []
+
+    def _resolve_active_skills(self, user_message: str) -> list[BaseSkill]:
+        llm_selected_skills = self._select_skills(user_message)
+        always_on_skills = self.skill_manager.get_always_on_skills()
+
+        forced_skills: list[BaseSkill] = []
+        preferred_by_group: dict[str, str] = {}
+        if self._selected_persona:
+            preferred_by_group[self._persona_group] = self._selected_persona
+            forced_skills = self.skill_manager.get_skills_by_names([self._selected_persona])
+
+        merged = self.skill_manager.dedupe_skills(llm_selected_skills + forced_skills + always_on_skills)
+        return self.skill_manager.apply_exclusive_groups(merged, preferred_by_group=preferred_by_group)
 
     def _build_system_prompt(self, active_skills: list, tool_prompt: str) -> tuple[str, dict]:
         prompt = self.skill_manager.build_system_prompt(tool_prompt, active_skills)
@@ -285,9 +329,7 @@ class Agent:
 
     def run(self, user_message: str, response_mode: str = "normal") -> str:
         # 1. Select skills
-        llm_selected_skills = self._select_skills(user_message)
-        always_on_skills = self.skill_manager.get_always_on_skills()
-        active_skills = list(set(llm_selected_skills + always_on_skills))
+        active_skills = self._resolve_active_skills(user_message)
 
         # 2. Build system prompt with selected skills
         tool_prompt = self.tool_manager.get_tools_prompt()
@@ -335,9 +377,7 @@ class Agent:
 
     def run_stream(self, user_message: str, response_mode: str = "normal"):
         # 1. Select skills
-        llm_selected_skills = self._select_skills(user_message)
-        always_on_skills = self.skill_manager.get_always_on_skills()
-        active_skills = list(set(llm_selected_skills + always_on_skills))
+        active_skills = self._resolve_active_skills(user_message)
 
         # 2. Build system prompt with selected skills
         tool_prompt = self.tool_manager.get_tools_prompt()

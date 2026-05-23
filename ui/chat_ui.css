@@ -133,6 +133,7 @@ h1 {
   align-items: center;
   flex-wrap: wrap;
   margin-top: 10px;
+  width: 100%;
 }
 
 .mode-label {
@@ -256,6 +257,105 @@ h1 {
   color: var(--muted);
 }
 
+.mode-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.persona-active {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 20;
+}
+
+.modal.open {
+  display: flex;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 17, 18, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.modal-surface {
+  position: relative;
+  width: min(720px, 92vw);
+  max-height: 70vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 16px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.modal-title {
+  margin: 0;
+  font-family: "Fraunces", "Space Grotesk", serif;
+  font-size: clamp(1.4rem, 2.2vw, 1.8rem);
+}
+
+.persona-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.persona-btn {
+  border: 1px solid var(--border);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.persona-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 20px rgba(15, 14, 10, 0.08);
+}
+
+.persona-btn.active {
+  border-color: var(--accent-strong);
+  background: #f0f7f6;
+}
+
+.persona-name {
+  display: block;
+  font-weight: 600;
+}
+
+.persona-desc {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 @media (max-width: 720px) {
   .controls {
     flex-direction: column;
@@ -263,5 +363,15 @@ h1 {
 
   .btn {
     width: 100%;
+  }
+
+  .mode-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .modal-surface {
+    width: 100%;
+    max-height: 80vh;
   }
 }

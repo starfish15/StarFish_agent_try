@@ -43,15 +43,75 @@ class SkillManager:
 
     def get_skill_descriptions(self) -> str:
         """Get a formatted string of all skill names and descriptions."""
-        return "\n".join(f"- {skill.name}: {skill.description}" for skill in self.skills.values())
+        return "\n".join(
+            f"- {skill.name}: {skill.description}"
+            for skill in self.skills.values()
+            if skill.selectable
+        )
 
     def get_skills_by_names(self, names: list[str]) -> list[BaseSkill]:
         """Return a list of skills that match the given names."""
         return [self.skills[name] for name in names if name in self.skills]
 
+    def get_all_skills(self) -> list[BaseSkill]:
+        return list(self.skills.values()) + list(self.always_on_skills)
+
+    def get_skills_by_group(self, group: str) -> list[BaseSkill]:
+        if not group:
+            return []
+        return [skill for skill in self.get_all_skills() if skill.exclusive_group == group]
+
     def get_always_on_skills(self) -> list[BaseSkill]:
         """Return the list of skills that are always active."""
         return self.always_on_skills
+
+    def dedupe_skills(self, skills: list[BaseSkill]) -> list[BaseSkill]:
+        seen: set[str] = set()
+        result: list[BaseSkill] = []
+        for skill in skills:
+            if skill.name in seen:
+                continue
+            seen.add(skill.name)
+            result.append(skill)
+        return result
+
+    def apply_exclusive_groups(
+        self,
+        skills: list[BaseSkill],
+        preferred_by_group: dict[str, str] | None = None,
+    ) -> list[BaseSkill]:
+        if not skills:
+            return []
+
+        preferred_by_group = preferred_by_group or {}
+        chosen_by_group: dict[str, str] = {}
+
+        grouped: dict[str, list[BaseSkill]] = {}
+        for skill in skills:
+            group = skill.exclusive_group
+            if group:
+                grouped.setdefault(group, []).append(skill)
+
+        for group, items in grouped.items():
+            preferred_name = preferred_by_group.get(group)
+            if preferred_name:
+                match = next((s for s in items if s.name == preferred_name), None)
+                if match:
+                    chosen_by_group[group] = match.name
+                    continue
+            if items:
+                chosen_by_group[group] = items[0].name
+
+        result: list[BaseSkill] = []
+        for skill in skills:
+            group = skill.exclusive_group
+            if not group:
+                result.append(skill)
+                continue
+            if chosen_by_group.get(group) == skill.name:
+                result.append(skill)
+
+        return result
 
     def build_system_prompt(self, tool_descriptions: str, active_skills: list[BaseSkill]) -> str:
         prefixes = [s.system_prompt_prefix().strip() for s in active_skills if s.system_prompt_prefix().strip()]

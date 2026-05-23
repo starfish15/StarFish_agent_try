@@ -7,6 +7,11 @@ const quitBtn = document.getElementById("quitBtn");
 const statusEl = document.getElementById("status");
 const modeTitleEl = document.getElementById("modeTitle");
 const modeButtons = document.querySelectorAll(".mode-btn[data-mode]");
+const personaBtn = document.getElementById("personaBtn");
+const personaModal = document.getElementById("personaModal");
+const personaListEl = document.getElementById("personaList");
+const personaStatusEl = document.getElementById("personaStatus");
+const personaActiveEl = document.getElementById("personaActive");
 
 // 页面可配置文案：修改这里即可
 const UI_TEXT = {
@@ -45,14 +50,125 @@ if (initialActive) {
 updateModeTitle();
 updateModeButtons();
 
+let personaCache = [];
+let activePersona = null;
+
+function setPersonaModalOpen(open) {
+  if (!personaModal) return;
+  personaModal.classList.toggle("open", open);
+  personaModal.setAttribute("aria-hidden", open ? "false" : "true");
+}
+
+function updatePersonaActiveLabel() {
+  if (!personaActiveEl) return;
+  const active = personaCache.find((p) => p.name === activePersona);
+  if (active) {
+    const label = active.display_name || active.name;
+    personaActiveEl.textContent = `当前：${label}`;
+  } else {
+    personaActiveEl.textContent = "";
+  }
+}
+
+function renderPersonaList() {
+  if (!personaListEl) return;
+  personaListEl.innerHTML = "";
+  personaCache.forEach((persona) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "persona-btn";
+    if (persona.name === activePersona) {
+      button.classList.add("active");
+    }
+    const label = persona.display_name || persona.name;
+    const desc = persona.description || "";
+    button.innerHTML = `
+      <span class="persona-name">${label}</span>
+      <span class="persona-desc">${desc}</span>
+    `;
+    button.addEventListener("click", () => selectPersona(persona.name));
+    personaListEl.appendChild(button);
+  });
+}
+
+async function loadPersonas(options = {}) {
+  const showStatus = options.showStatus !== false;
+  if (personaStatusEl && showStatus) {
+    personaStatusEl.textContent = "加载人设中…";
+  }
+  try {
+    const response = await fetch(API_PERSONAS);
+    if (!response.ok) {
+      throw new Error("无法加载人设列表");
+    }
+    const payload = await response.json();
+    personaCache = Array.isArray(payload.personas) ? payload.personas : [];
+    activePersona = payload.active || null;
+    renderPersonaList();
+    updatePersonaActiveLabel();
+    if (personaStatusEl && showStatus) {
+      personaStatusEl.textContent = "";
+    }
+  } catch (error) {
+    if (personaStatusEl && showStatus) {
+      personaStatusEl.textContent = error.message || "加载失败";
+    }
+  }
+}
+
+async function selectPersona(name) {
+  if (!personaStatusEl) return;
+  personaStatusEl.textContent = "切换人设中…";
+  try {
+    const response = await fetch(API_PERSONA_SELECT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "切换失败");
+    }
+    const payload = await response.json();
+    personaCache = Array.isArray(payload.personas) ? payload.personas : personaCache;
+    activePersona = payload.active || name;
+    renderPersonaList();
+    updatePersonaActiveLabel();
+    personaStatusEl.textContent = "";
+  } catch (error) {
+    personaStatusEl.textContent = error.message || "切换失败";
+  }
+}
+
 modeButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     setMode(btn.dataset.mode || "normal");
   });
 });
 
+if (personaBtn) {
+  personaBtn.addEventListener("click", () => {
+    setPersonaModalOpen(true);
+    loadPersonas();
+  });
+}
+
+if (personaModal) {
+  personaModal.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.dataset.close === "true") {
+      setPersonaModalOpen(false);
+    }
+  });
+}
+
+loadPersonas({ showStatus: false });
+
 const API_CHAT = `${location.origin}/chat_stream`;
 const API_SHUTDOWN = `${location.origin}/shutdown`;
+const API_PERSONAS = `${location.origin}/personas`;
+const API_PERSONA_SELECT = `${location.origin}/select_persona`;
 
 let sending = false;
 

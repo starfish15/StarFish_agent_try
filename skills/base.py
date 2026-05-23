@@ -22,6 +22,7 @@ class BaseSkill(ABC):
     @property
     def description(self) -> str:
         """Short description for humans."""
+        return ""
 
     @property
     def always_on(self) -> bool:
@@ -32,6 +33,21 @@ class BaseSkill(ABC):
     def uses_tools(self) -> bool:
         """If True, include tool list and tool rules for this skill."""
         return False
+
+    @property
+    def selectable(self) -> bool:
+        """If False, exclude from LLM auto-selection."""
+        return True
+
+    @property
+    def exclusive_group(self) -> str:
+        """Non-empty group name means only one skill in the group may be active."""
+        return ""
+
+    @property
+    def display_name(self) -> str:
+        """Short, user-facing name for UI display."""
+        return self.name
 
     def system_prompt_prefix(self) -> str:
         """Content placed before the tool list in the system prompt."""
