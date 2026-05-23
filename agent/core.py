@@ -1,4 +1,5 @@
 import json
+import re
 from agent.llm import LLMClient
 from agent.tool_manager import ToolManager
 from config.settings import (
@@ -149,6 +150,80 @@ class Agent:
             final = text.strip()
         return thought, final.strip()
 
+    def _extract_tool_call(self, text: object) -> dict | None:
+        if not isinstance(text, str):
+            return None
+
+        tool_call = self._try_parse_tool_call(text)
+        if tool_call:
+            return tool_call
+
+        cleaned = self._strip_tool_wrappers(text)
+        tool_call = self._try_parse_tool_call(cleaned)
+        if tool_call:
+            return tool_call
+
+        fenced = self._extract_json_from_fence(cleaned)
+        if fenced:
+            tool_call = self._try_parse_tool_call(fenced)
+            if tool_call:
+                return tool_call
+
+        for candidate in self._iter_json_objects(cleaned):
+            tool_call = self._try_parse_tool_call(candidate)
+            if tool_call:
+                return tool_call
+
+        return None
+
+    def _try_parse_tool_call(self, text: str) -> dict | None:
+        try:
+            parsed = json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        if isinstance(parsed, dict) and "tool" in parsed:
+            return parsed
+        return None
+
+    def _strip_tool_wrappers(self, text: str) -> str:
+        return re.sub(r"</?\s*(thought|final)\s*>", "", text, flags=re.IGNORECASE).strip()
+
+    def _extract_json_from_fence(self, text: str) -> str | None:
+        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        return None
+
+    def _iter_json_objects(self, text: str):
+        in_string = False
+        escape = False
+        depth = 0
+        start = None
+
+        for idx, ch in enumerate(text):
+            if in_string:
+                if escape:
+                    escape = False
+                elif ch == "\\":
+                    escape = True
+                elif ch == '"':
+                    in_string = False
+                continue
+
+            if ch == '"':
+                in_string = True
+                continue
+
+            if ch == "{":
+                if depth == 0:
+                    start = idx
+                depth += 1
+            elif ch == "}" and depth:
+                depth -= 1
+                if depth == 0 and start is not None:
+                    yield text[start : idx + 1]
+                    start = None
+
     def _messages_char_count(self, messages: list[dict]) -> int:
         return sum(len(m.get("content", "")) for m in messages)
 
@@ -236,20 +311,17 @@ class Agent:
             self._messages = messages
 
             # 3. Handle tool calls
-            try:
-                tool_call = json.loads(reply)
-                if "tool" in tool_call:
-                    name = tool_call["tool"]
-                    args = tool_call.get("arguments", {})
-                    result = self.tool_manager.execute(name, **args)
-                    tool_msg = f"工具执行结果：{json.dumps(result, ensure_ascii=False)}"
-                    messages.append({"role": "user", "content": tool_msg})
-                    self._messages = messages
-                    # NOTE: We don't re-select skills after a tool call in this model.
-                    # The skills are selected once at the beginning based on the initial user message.
-                    continue
-            except (json.JSONDecodeError, TypeError):
-                pass  # Not a tool call, it's the final reply
+            tool_call = self._extract_tool_call(reply)
+            if tool_call:
+                name = tool_call["tool"]
+                args = tool_call.get("arguments", {})
+                result = self.tool_manager.execute(name, **args)
+                tool_msg = f"工具执行结果：{json.dumps(result, ensure_ascii=False)}"
+                messages.append({"role": "user", "content": tool_msg})
+                self._messages = messages
+                # NOTE: We don't re-select skills after a tool call in this model.
+                # The skills are selected once at the beginning based on the initial user message.
+                continue
 
             if response_mode == "think":
                 _, final = self._split_thought_final(reply)
@@ -309,18 +381,15 @@ class Agent:
                 messages.append({"role": "assistant", "content": reply})
                 self._messages = messages
 
-                try:
-                    tool_call = json.loads(reply)
-                    if "tool" in tool_call:
-                        name = tool_call["tool"]
-                        args = tool_call.get("arguments", {})
-                        result = self.tool_manager.execute(name, **args)
-                        tool_msg = f"工具执行结果：{json.dumps(result, ensure_ascii=False)}"
-                        messages.append({"role": "user", "content": tool_msg})
-                        self._messages = messages
-                        continue
-                except (json.JSONDecodeError, TypeError):
-                    pass
+                tool_call = self._extract_tool_call(reply)
+                if tool_call:
+                    name = tool_call["tool"]
+                    args = tool_call.get("arguments", {})
+                    result = self.tool_manager.execute(name, **args)
+                    tool_msg = f"工具执行结果：{json.dumps(result, ensure_ascii=False)}"
+                    messages.append({"role": "user", "content": tool_msg})
+                    self._messages = messages
+                    continue
 
                 if not streamed and reply:
                     yield "<FINAL>\n"
@@ -358,18 +427,15 @@ class Agent:
             self._messages = messages
 
             # 3. Handle tool calls
-            try:
-                tool_call = json.loads(reply)
-                if "tool" in tool_call:
-                    name = tool_call["tool"]
-                    args = tool_call.get("arguments", {})
-                    result = self.tool_manager.execute(name, **args)
-                    tool_msg = f"工具执行结果：{json.dumps(result, ensure_ascii=False)}"
-                    messages.append({"role": "user", "content": tool_msg})
-                    self._messages = messages
-                    continue
-            except (json.JSONDecodeError, TypeError):
-                pass
+            tool_call = self._extract_tool_call(reply)
+            if tool_call:
+                name = tool_call["tool"]
+                args = tool_call.get("arguments", {})
+                result = self.tool_manager.execute(name, **args)
+                tool_msg = f"工具执行结果：{json.dumps(result, ensure_ascii=False)}"
+                messages.append({"role": "user", "content": tool_msg})
+                self._messages = messages
+                continue
 
             if not streamed and reply:
                 yield reply

@@ -2,6 +2,7 @@ from tools.weather import WeatherTool
 from tools.calculator import CalculatorTool
 from tools.critical_path import CriticalPathTool
 from tools.parse_schedule import ParseScheduleTool
+from tools.current_time import CurrentTimeTool
 
 class ToolManager:
     def __init__(self, enabled_tools: list[str] | None = None):
@@ -24,6 +25,9 @@ class ToolManager:
 
         parse_schedule = ParseScheduleTool()
         self.tools[parse_schedule.name] = parse_schedule
+
+        current_time = CurrentTimeTool()
+        self.tools[current_time.name] = current_time
 
     def register(self, tool):
         """支持动态追加新工具"""

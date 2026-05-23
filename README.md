@@ -59,28 +59,6 @@ uv run ui/chat_server.py
 http://localhost:8002/
 ```
 
-### FastAPI + Tkinter 桌面窗口（可选）(这个后续优化的优先级较低)
-如果你更倾向于“桌面 GUI”，项目也提供了 Tkinter 版窗口（对话记录 / 输入框 / 发送 / 退出），其后端使用 FastAPI。
-
-说明：Tkinter 需要图形环境。
-- Linux 远程/无桌面环境下若没有 `DISPLAY`，会报 `no display name and no $DISPLAY environment variable`。
-- 另外一些精简 Linux 环境默认不包含 Tk：需要安装 `python3-tk`（Debian/Ubuntu）或 `python3-tkinter`（Fedora）。
-
-1) 直接启动桌面窗口（默认会自动拉起 FastAPI 后端）：
-```bash
-uv run ui/chat_tk.py
-```
-
-2) 或者你也可以先单独启动 FastAPI 后端：
-```bash
-uv run ui/chat_fastapi_server.py
-```
-
-然后再启动窗口并禁止自动拉起：
-```bash
-CHAT_START_SERVER=0 uv run ui/chat_tk.py
-```
-
 ---
 
 ## Agent 工作流程（简版）
